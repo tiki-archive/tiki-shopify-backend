@@ -10,10 +10,13 @@ import * as UUID from 'uuid';
 import { ShopifyAuth } from '../auth/shopify-auth';
 import { ShopifyDiscountCreate } from './shopify-discount-create';
 import { ShopifyData } from '../meta/shopify-data';
-import { ShopifyDiscountRsp } from './shopify-discount-rsp';
+import { ShopifyDiscountIdsRsp } from './shopify-discount-ids-rsp';
+import { ShopifyDiscountIdRsp } from './shopify-discount-id-rsp';
+import { ShopifyDiscountMeta } from './shopify-discount-meta';
 import { query, mutation } from 'gql-query-builder';
+import { status } from 'itty-router';
 
-export type { ShopifyDiscountRsp };
+export type { ShopifyDiscountIdsRsp };
 
 export class ShopifyDiscount extends ShopifyMeta {
   private readonly _functionIdOrder: string;
@@ -41,34 +44,16 @@ export class ShopifyDiscount extends ShopifyMeta {
           : this._functionIdProduct,
       metafields: [
         {
-          key: 'type',
-          namespace: ShopifyMeta.namespace,
-          type: 'single_line_text_field',
-          value: discount.metafields.type,
-        },
-        {
           key: 'tid',
           namespace: ShopifyMeta.namespace,
           type: 'single_line_text_field',
           value: id,
         },
         {
-          key: 'description',
+          key: 'discount_meta',
           namespace: ShopifyMeta.namespace,
           type: 'single_line_text_field',
-          value: discount.metafields.description,
-        },
-        {
-          key: 'discount_amount',
-          namespace: ShopifyMeta.namespace,
-          type: 'single_line_text_field',
-          value: JSON.stringify(discount.metafields.discountAmount),
-        },
-        {
-          key: 'discount_restrictions',
-          namespace: ShopifyMeta.namespace,
-          type: 'number_decimal',
-          value: JSON.stringify(discount.metafields.discountRestrictions),
+          value: JSON.stringify(discount.metafields),
         },
         {
           key: 'products',
@@ -160,7 +145,7 @@ export class ShopifyDiscount extends ShopifyMeta {
 
   async getDiscountIds(
     titles: Array<string>
-  ): Promise<ShopifyData<ShopifyDiscountRsp>> {
+  ): Promise<ShopifyData<ShopifyDiscountIdsRsp>> {
     const filter = `title:${titles.map((title) => `"${title}"`).join(' OR ')}`;
     const accessToken = await this.getToken();
     return fetch(`https://${this.shopDomain}/admin/api/2023-04/graphql.json`, {
@@ -218,7 +203,7 @@ export class ShopifyDiscount extends ShopifyMeta {
       ),
     })
       .then((res) => res.json())
-      .then((json) => json as ShopifyData<ShopifyDiscountRsp>);
+      .then((json) => json as ShopifyData<ShopifyDiscountIdsRsp>);
   }
 
   async getDiscountById(id: string): Promise<Response> {
@@ -233,28 +218,25 @@ export class ShopifyDiscount extends ShopifyMeta {
         },
       },
       fields: [
-        'id',
         {
-          metafield: {
-            operation: 'metafield',
-            variables: {
-              key: { value: 'tid', type: 'String', required: true },
-              namespace: {
-                value: ShopifyMeta.namespace,
-                type: 'String',
-              },
+          operation: 'metafield',
+          variables: {
+            key: { value: 'discount-meta', type: 'String', required: true },
+            namespace: {
+              value: ShopifyMeta.namespace,
+              type: 'String',
             },
-            fields: ['key', 'value'],
           },
+          fields: ['value'],
         },
         {
-          discount: {
-            operation: 'discount',
-            fields: {
+          operation: 'discount',
+          variables: {},
+          fields: [
+            {
               operation: 'DiscountAutomaticApp',
               fields: [
                 'title',
-                'discountClass',
                 {
                   operation: 'combinesWith',
                   fields: [
@@ -262,17 +244,18 @@ export class ShopifyDiscount extends ShopifyMeta {
                     'productDiscounts',
                     'shippingDiscounts',
                   ],
+                  variables: {},
                 },
                 'startsAt',
                 'endsAt',
               ],
+              variables: {},
               fragment: true,
             },
-          },
+          ],
         },
       ],
     });
-    console.log(query);
     const response = await fetch(
       `https://${this.shopDomain}/admin/api/2023-04/graphql.json`,
       {
@@ -285,7 +268,38 @@ export class ShopifyDiscount extends ShopifyMeta {
         body: JSON.stringify(gql),
       }
     );
-    return await response.json();
+    const discountIdResp: ShopifyData<ShopifyDiscountIdRsp> =
+      await response.json();
+    console.log(JSON.stringify(discountIdResp));
+    if (
+      discountIdResp.data.discountNode.discount &&
+      discountIdResp.data.discountNode.metafield
+    ) {
+      const discountMeta: ShopifyDiscountMeta = JSON.parse(
+        discountIdResp.data.discountNode.metafield.value
+      );
+      const discountData = discountIdResp.data.discountNode.discount;
+      const discount = {
+        title: discountData.title,
+        startsAt: new Date(discountData.startsAt),
+        endsAt: discountData.endsAt ? new Date(discountData.endsAt) : undefined,
+        metafields: {
+          type: discountMeta.type,
+          description: discountMeta.description,
+          discountType: discountMeta.discountType,
+          discountValue: discountMeta.discountValue,
+          minValue: discountMeta.minValue,
+          minQty: discountMeta.minQty,
+          maxUse: discountMeta.maxUse,
+          onePerUser: discountMeta.onePerUser,
+          products: discountMeta.products,
+          collections: discountMeta.collections,
+        },
+        combinesWith: discountData.combinesWith,
+      };
+      return new Response(JSON.stringify(discount));
+    }
+    return new Response('not found', { status: 404 });
   }
 
   async discountUsed(customer: number, id: Array<string>): Promise<void> {
