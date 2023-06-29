@@ -149,8 +149,28 @@ export class ShopifyMeta extends ShopifyWebhook {
       },
     ]);
 
-  async getInstall(): Promise<ShopifyData<ShopifyAppInstallRsp>> {
-    const accessToken = await this.getToken();
+  async getInstall(
+    accessToken: string
+  ): Promise<ShopifyData<ShopifyAppInstallRsp>> {
+    // const accessToken = await this.getToken();
+    const gql = query({
+      operation: 'currentAppInstallation',
+      fields: [
+        'id',
+        {
+          operation: 'metafields',
+          variables: {
+            namespace: { type: 'String', value: ShopifyMeta.namespace },
+            first: { type: 'Int', value: 3 },
+          },
+          fields: [
+            {
+              nodes: ['key', 'value'],
+            },
+          ],
+        },
+      ],
+    });
     return fetch(`https://${this.shopDomain}/admin/api/2023-04/graphql.json`, {
       method: 'POST',
       headers: new API.HeaderBuilder()
@@ -158,24 +178,7 @@ export class ShopifyMeta extends ShopifyWebhook {
         .content(API.Consts.APPLICATION_JSON)
         .set(ShopifyAuth.tokenHeader, accessToken)
         .build(),
-      body: JSON.stringify({
-        operation: 'currentAppInstallation',
-        fields: [
-          'id',
-          {
-            operation: 'metafields',
-            variables: {
-              namespace: { type: 'String', value: ShopifyMeta.namespace },
-              first: { type: 'Int', value: 3 },
-            },
-            fields: [
-              {
-                nodes: ['key'],
-              },
-            ],
-          },
-        ],
-      }),
+      body: JSON.stringify(gql),
     })
       .then((res) => res.json())
       .then((json) => json as ShopifyData<ShopifyAppInstallRsp>);

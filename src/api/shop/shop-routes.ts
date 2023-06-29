@@ -8,3 +8,9 @@ export async function redact(): Promise<Response> {
     status: 200,
   });
 }
+
+export async function uninstall(): Promise<Response> {
+  return new Response(null, {
+    status: 200,
+  });
+}
