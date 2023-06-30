@@ -157,6 +157,7 @@ export class ShopifyMeta extends ShopifyWebhook {
       operation: 'currentAppInstallation',
       fields: [
         'id',
+        'launchUrl',
         {
           operation: 'metafields',
           variables: {

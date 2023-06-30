@@ -56,11 +56,10 @@ export async function token(request: IRequest, env: Env): Promise<Response> {
       baseUrl
     );
   }
-
   return new Response(null, {
     status: 302,
     headers: new Headers({
-      location: `https://${shop}/apps/${env.KEY_ID}`,
+      location: appInstallation.data.currentAppInstallation.launchUrl,
     }),
   });
 }

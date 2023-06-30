@@ -8,5 +8,6 @@ import { ShopifyMetafield } from './shopify-metafield';
 
 export interface ShopifyAppInstall {
   id: string;
+  launchUrl: string;
   metafields?: ShopifyNodes<ShopifyMetafield>;
 }
