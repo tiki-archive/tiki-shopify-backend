@@ -152,7 +152,6 @@ export class ShopifyMeta extends ShopifyWebhook {
   async getInstall(
     accessToken: string
   ): Promise<ShopifyData<ShopifyAppInstallRsp>> {
-    // const accessToken = await this.getToken();
     const gql = query({
       operation: 'currentAppInstallation',
       fields: [
