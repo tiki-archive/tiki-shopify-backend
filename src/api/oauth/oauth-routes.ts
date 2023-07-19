@@ -18,7 +18,7 @@ export async function authorize(
     throw new API.ErrorBuilder()
       .message('Missing required parameters.')
       .detail('Requires shop.')
-      .error(404);
+      .error(401);
   }
   const shopify = new Shopify(shop, env);
   await shopify.verifyOAuth(request);
