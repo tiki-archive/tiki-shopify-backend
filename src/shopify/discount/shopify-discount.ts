@@ -36,6 +36,7 @@ export class ShopifyDiscount extends ShopifyMeta {
         productDiscounts: discount.combinesWith.productDiscounts,
         shippingDiscounts: discount.combinesWith.shippingDiscounts,
       },
+      description: discount.description,
       endsAt: discount.endsAt,
       functionId:
         discount.metafields.type === 'order'
@@ -113,9 +114,15 @@ export class ShopifyDiscount extends ShopifyMeta {
       await this.setMetafields([
         {
           namespace: ShopifyMeta.namespace,
-          key: 'discount_active',
+          key: 'discount',
           type: 'single_line_text_field',
-          value: id,
+          value: JSON.stringify({
+            amount: discount.metafields.discountValue,
+            type: discount.metafields.discountType,
+            description: discount.description,
+            expiry: discount.endsAt,
+            reference: id,
+          }),
           ownerId: appId,
         },
       ]);

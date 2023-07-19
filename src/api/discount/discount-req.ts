@@ -8,6 +8,7 @@ import { DiscountReqMeta } from './discount-req-meta';
 
 export interface DiscountReq {
   title: string;
+  description: string;
   startsAt: Date;
   endsAt?: Date;
   combinesWith: DiscountReqCombine;
