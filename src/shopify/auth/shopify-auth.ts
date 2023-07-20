@@ -67,6 +67,10 @@ export class ShopifyAuth {
     return this._accessToken;
   }
 
+  async removeToken(): Promise<void> {
+    await this._tokenStore.delete(this.shopDomain);
+  }
+
   async verifyWebhook(request: Request): Promise<boolean> {
     const req = request.clone();
     const signature = req.headers.get(ShopifyAuth.signHeader) ?? '';

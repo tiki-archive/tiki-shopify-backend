@@ -25,7 +25,8 @@ export async function authorize(
   await shopify.verifyOAuth(request);
 
   try {
-    await shopify.getToken();
+    const accessToken = await shopify.getToken();
+    await shopify.getInstall(accessToken);
     const reqUrl = new URL(request.url);
     reqUrl.hostname = 'tiki.shopify.brgweb.com.br';
     reqUrl.pathname = '/';
