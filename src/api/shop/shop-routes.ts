@@ -7,6 +7,38 @@ import { API, Throw } from '@mytiki/worker-utils-ts';
 import { IRequest } from 'itty-router';
 import { Shopify } from '../../shopify/shopify';
 
+export async function index(
+  request: IRequest,
+  env: Env
+): Promise<Response> {
+  let redirectUrl : string;
+  const reqHeaders = request.headers;
+  const reqUrl = new URL(request.url);
+  const shop = request.query.shop as string;
+  if (shop == null) {
+    throw new API.ErrorBuilder()
+      .message('Missing required parameters.')
+      .detail('Requires shop.')
+      .error(401);
+  }
+  const shopify = new Shopify(shop, env);
+  try {
+    const accessToken = await shopify.getToken();
+    await shopify.getInstall(accessToken);
+    reqUrl.hostname = 'shopify-96o.pages.dev';
+    reqUrl.pathname = '/';
+    redirectUrl = reqUrl.href;
+  } catch {
+    reqUrl.pathname = `${API.Consts.API_LATEST}/oauth/authorize`;
+    redirectUrl = reqUrl.href;
+  }
+  reqHeaders.set('location', redirectUrl)
+  return new Response(null,{
+    status: 302,
+    headers: reqHeaders
+  })
+}
+
 export async function redact(): Promise<Response> {
   return new Response(null, {
     status: 200,

@@ -12,7 +12,6 @@ export async function authorize(
   request: IRequest,
   env: Env
 ): Promise<Response> {
-  let redirectUrl;
   const shop = request.query.shop as string;
   const baseUrl = new URL(request.url).hostname;
   if (shop == null) {
@@ -23,23 +22,13 @@ export async function authorize(
   }
   const shopify = new Shopify(shop, env);
   await shopify.verifyOAuth(request);
-
-  try {
-    const accessToken = await shopify.getToken();
-    await shopify.getInstall(accessToken);
-    const reqUrl = new URL(request.url);
-    reqUrl.hostname = 'tiki.shopify.brgweb.com.br';
-    reqUrl.pathname = '/';
-    redirectUrl = reqUrl.href;
-  } catch {
-    redirectUrl = shopify.authorize(
-      `https://${baseUrl}/api/latest/oauth/token`
-    );
-  }
+  const authUrl = shopify.authorize(
+    `https://${baseUrl}/api/latest/oauth/token`
+  );
   return new Response(null, {
     status: 302,
     headers: new Headers({
-      location: redirectUrl,
+      location: authUrl,
     }),
   });
 }

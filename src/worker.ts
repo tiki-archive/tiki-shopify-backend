@@ -14,13 +14,11 @@ import { Router, error, createCors, StatusError } from 'itty-router';
 const { preflight, corsify } = createCors({
   methods: ['GET', 'POST'],
   origins: ['*'],
-  // headers: {
-  //   'Access-Control-Allow-Credentials': true,
-  // },
 });
 const router = Router();
 router
   .all('*', preflight)
+  .get(`${API.Consts.API_LATEST}/`, Shop.index)
   .get(`${API.Consts.API_LATEST}/oauth/authorize`, OAuth.authorize)
   .get(`${API.Consts.API_LATEST}/oauth/token`, OAuth.token)
   .post(`${API.Consts.API_LATEST}/order/paid`, Order.paid)
