@@ -7,11 +7,8 @@ import { API, Throw } from '@mytiki/worker-utils-ts';
 import { IRequest } from 'itty-router';
 import { Shopify } from '../../shopify/shopify';
 
-export async function index(
-  request: IRequest,
-  env: Env
-): Promise<Response> {
-  let redirectUrl : string;
+export async function index(request: IRequest, env: Env): Promise<Response> {
+  let redirectUrl: string;
   const reqHeaders = request.headers;
   const reqUrl = new URL(request.url);
   const shop = request.query.shop as string;
@@ -24,7 +21,9 @@ export async function index(
   const shopify = new Shopify(shop, env);
   try {
     const accessToken = await shopify.getToken();
-    await shopify.getInstall(accessToken);
+    const appInstallation = await shopify.getInstall(accessToken);
+    const keys = appInstallation.data!.currentAppInstallation.metafields!.nodes;
+    const reqUrl = new URL(request.url);
     reqUrl.hostname = 'shopify-96o.pages.dev';
     reqUrl.pathname = '/';
     redirectUrl = reqUrl.href;
@@ -32,11 +31,11 @@ export async function index(
     reqUrl.pathname = `${API.Consts.API_LATEST}/oauth/authorize`;
     redirectUrl = reqUrl.href;
   }
-  reqHeaders.set('location', redirectUrl)
-  return new Response(null,{
+  const headers = { ...reqHeaders, location: redirectUrl };
+  return new Response(null, {
     status: 302,
-    headers: reqHeaders
-  })
+    headers,
+  });
 }
 
 export async function redact(): Promise<Response> {
