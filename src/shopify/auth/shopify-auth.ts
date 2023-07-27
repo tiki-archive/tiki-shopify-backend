@@ -34,21 +34,24 @@ export class ShopifyAuth {
     `scope=${ShopifyAuth.scope}&` +
     `redirect_uri=${redirectUri}`;
 
-  async grant(code: string): Promise<void> {
+  async grant(code: string): Promise<string> {
     const url =
       `https://${this.shopDomain}/admin/oauth/access_token?` +
       `client_id=${this._keyId}&` +
       `client_secret=${this._secretKey}&` +
-      `code=${code}&`;
-    const token = await fetch(url, {
+      `code=${code}`;
+    console.log(url);
+    const tokenRsp = await fetch(url, {
       method: 'POST',
       headers: new API.HeaderBuilder()
         .content(API.Consts.APPLICATION_JSON)
+        .accept(API.Consts.APPLICATION_JSON)
         .build(),
-    })
-      .then((res) => res.json())
-      .then((json) => (json as ShopifyTokenRsp).access_token);
+    });
+    const jsonRsp = await tokenRsp.json();
+    const token = (jsonRsp as ShopifyTokenRsp).access_token;
     await this._tokenStore.put(this.shopDomain, token);
+    return token;
   }
 
   async getToken(): Promise<string> {
@@ -62,6 +65,10 @@ export class ShopifyAuth {
         .error(403);
     }
     return this._accessToken;
+  }
+
+  async removeToken(): Promise<void> {
+    await this._tokenStore.delete(this.shopDomain);
   }
 
   async verifyWebhook(request: Request): Promise<boolean> {
@@ -80,7 +87,6 @@ export class ShopifyAuth {
     const signature = params.get('hmac') ?? '';
     params.delete('hmac');
     params.sort();
-
     const match = signature.match(/.{1,2}/g);
     if (match == null) return false;
     const signatureBytes = Uint8Array.from(

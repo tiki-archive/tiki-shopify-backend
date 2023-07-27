@@ -14,13 +14,12 @@ import { Router, error, createCors, StatusError } from 'itty-router';
 const { preflight, corsify } = createCors({
   methods: ['GET', 'POST'],
   origins: ['*'],
-  // headers: {
-  //   'Access-Control-Allow-Credentials': true,
-  // },
 });
 const router = Router();
 router
   .all('*', preflight)
+  .get('/', Shop.index)
+  .get('/discount/*', Discount.adminUi)
   .get(`${API.Consts.API_LATEST}/oauth/authorize`, OAuth.authorize)
   .get(`${API.Consts.API_LATEST}/oauth/token`, OAuth.token)
   .post(`${API.Consts.API_LATEST}/order/paid`, Order.paid)
@@ -28,6 +27,7 @@ router
   .post(`${API.Consts.API_LATEST}/customer/redact`, Customer.redact)
   .post(`${API.Consts.API_LATEST}/customer/discount`, Customer.discount)
   .post(`${API.Consts.API_LATEST}/shop/redact`, Shop.redact)
+  .get(`${API.Consts.API_LATEST}/shop/uninstall`, Shop.uninstall)
   .post(`${API.Consts.API_LATEST}/discount`, Discount.create)
   .get(`${API.Consts.API_LATEST}/discount/:id`, Discount.get)
   .all('*', () => new API.ErrorBuilder().message('Not Found').error(404));

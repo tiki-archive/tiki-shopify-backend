@@ -32,4 +32,13 @@ export class ShopifyWebhook extends ShopifyAuth {
         format: 'json',
       },
     });
+
+  registerUninstallWebhook = (baseUrl: string): Promise<void> =>
+    this.registerWebhook({
+      webhook: {
+        address: `https://${baseUrl}/api/latest/shop/uninstall`,
+        topic: 'app/uninstalled',
+        format: 'json',
+      },
+    });
 }

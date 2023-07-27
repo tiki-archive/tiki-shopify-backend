@@ -18,7 +18,7 @@ export async function authorize(
     throw new API.ErrorBuilder()
       .message('Missing required parameters.')
       .detail('Requires shop.')
-      .error(404);
+      .error(401);
   }
   const shopify = new Shopify(shop, env);
   await shopify.verifyOAuth(request);
@@ -36,7 +36,7 @@ export async function authorize(
 export async function token(request: IRequest, env: Env): Promise<Response> {
   const shop = request.query.shop as string;
   const code = request.query.code as string;
-  const baseUrl = new URL(request.url).hostname;
+  const reqUrl = new URL(request.url);
   if (shop == null || code == null) {
     throw new API.ErrorBuilder()
       .message('Missing required parameters.')
@@ -45,22 +45,23 @@ export async function token(request: IRequest, env: Env): Promise<Response> {
   }
 
   const shopify = new Shopify(shop, env);
-  await shopify.grant(code);
-  const appInstallation = await shopify.getInstall();
-  const keys = appInstallation.data.currentAppInstallation.metafields?.nodes;
+  const accessToken = await shopify.grant(code);
+  const appInstallation = await shopify.getInstall(accessToken);
+  const redirectUrl = appInstallation.data.currentAppInstallation.launchUrl;
+  const keys = appInstallation.data?.currentAppInstallation.metafields?.nodes;
   if (keys === undefined || keys.length < 3) {
     await onInstall(
       new Tiki(env),
       shopify,
       appInstallation.data.currentAppInstallation.id,
-      baseUrl
+      reqUrl.hostname
     );
   }
-
   return new Response(null, {
     status: 302,
     headers: new Headers({
-      location: `https://${shop}/apps/${env.KEY_ID}`,
+      location: redirectUrl,
+      'Content-Security-Policy': `frame-ancestors ${reqUrl.protocol}${reqUrl.hostname} https://admin.shopify.com;`,
     }),
   });
 }

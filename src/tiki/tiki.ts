@@ -80,17 +80,17 @@ export class Tiki {
     appId: string,
     isPublic: boolean
   ): Promise<TikiKeyCreateRsp> {
-    const req: TikiKeyCreateReq = {
-      isPublic,
-    };
-    return fetch(`${Tiki.authUrl}/app/${appId}/key`, {
+    const headers = new API.HeaderBuilder()
+      .accept(API.Consts.APPLICATION_JSON)
+      .authorization(`Bearer ${accessToken}`)
+      .content(API.Consts.APPLICATION_JSON)
+      .build();
+    const url = `${Tiki.authUrl}/app/${appId}/key${
+      isPublic ? '?isPublic=true' : ''
+    }`;
+    return fetch(url, {
       method: 'POST',
-      headers: new API.HeaderBuilder()
-        .accept(API.Consts.APPLICATION_JSON)
-        .authorization(`Bearer ${accessToken}`)
-        .content(API.Consts.APPLICATION_JSON)
-        .build(),
-      body: JSON.stringify(req),
+      headers,
     })
       .then((res) => res.json())
       .then((json) => json as TikiKeyCreateRsp);

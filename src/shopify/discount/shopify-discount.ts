@@ -14,7 +14,6 @@ import { ShopifyDiscountIdsRsp } from './shopify-discount-ids-rsp';
 import { ShopifyDiscountIdRsp } from './shopify-discount-id-rsp';
 import { ShopifyDiscountMeta } from './shopify-discount-meta';
 import { query, mutation } from 'gql-query-builder';
-import { status } from 'itty-router';
 
 export type { ShopifyDiscountIdsRsp };
 
@@ -37,6 +36,7 @@ export class ShopifyDiscount extends ShopifyMeta {
         productDiscounts: discount.combinesWith.productDiscounts,
         shippingDiscounts: discount.combinesWith.shippingDiscounts,
       },
+      description: discount.description,
       endsAt: discount.endsAt,
       functionId:
         discount.metafields.type === 'order'
@@ -52,25 +52,46 @@ export class ShopifyDiscount extends ShopifyMeta {
         {
           key: 'discount_meta',
           namespace: ShopifyMeta.namespace,
-          type: 'single_line_text_field',
+          type: 'json',
           value: JSON.stringify(discount.metafields),
         },
         {
           key: 'products',
           namespace: ShopifyMeta.namespace,
-          type: 'list.single_line_text_field',
+          type: 'json',
           value: JSON.stringify(discount.metafields.products),
         },
         {
           key: 'collections',
           namespace: ShopifyMeta.namespace,
-          type: 'list.single_line_text_field',
+          type: 'json',
           value: JSON.stringify(discount.metafields.collections),
         },
       ],
       startsAt: discount.startsAt,
       title: discount.title,
     };
+    const mutationQuery = mutation(
+      {
+        operation: 'discountAutomaticAppCreate',
+        variables: {
+          automaticAppDiscount: {
+            value: req,
+            type: 'DiscountAutomaticAppInput',
+            required: true,
+          },
+        },
+        fields: [
+          {
+            userErrors: ['message', 'field'],
+          },
+        ],
+      },
+      undefined,
+      {
+        operationName: 'DiscountAutomaticAppCreate',
+      }
+    );
     const res = await fetch(
       `https://${this.shopDomain}/admin/api/2023-04/graphql.json`,
       {
@@ -80,29 +101,7 @@ export class ShopifyDiscount extends ShopifyMeta {
           .content(API.Consts.APPLICATION_JSON)
           .set(ShopifyAuth.tokenHeader, accessToken)
           .build(),
-        body: JSON.stringify(
-          mutation(
-            {
-              operation: 'discountAutomaticAppCreate',
-              variables: {
-                automaticAppDiscount: {
-                  value: req,
-                  type: 'DiscountAutomaticAppInput',
-                  required: true,
-                },
-              },
-              fields: [
-                {
-                  userErrors: ['message', 'field'],
-                },
-              ],
-            },
-            undefined,
-            {
-              operationName: 'DiscountAutomaticAppCreate',
-            }
-          )
-        ),
+        body: JSON.stringify(mutationQuery),
       }
     );
     if (res.status !== 200) {
@@ -115,9 +114,15 @@ export class ShopifyDiscount extends ShopifyMeta {
       await this.setMetafields([
         {
           namespace: ShopifyMeta.namespace,
-          key: 'discount_active',
-          type: 'single_line_text_field',
-          value: id,
+          key: 'discount',
+          type: 'json',
+          value: JSON.stringify({
+            amount: discount.metafields.discountValue,
+            type: discount.metafields.discountType,
+            description: discount.description,
+            expiry: discount.endsAt,
+            reference: id,
+          }),
           ownerId: appId,
         },
       ]);
@@ -148,6 +153,50 @@ export class ShopifyDiscount extends ShopifyMeta {
   ): Promise<ShopifyData<ShopifyDiscountIdsRsp>> {
     const filter = `title:${titles.map((title) => `"${title}"`).join(' OR ')}`;
     const accessToken = await this.getToken();
+    const gql = query(
+      {
+        operation: 'discountNodes',
+        variables: {
+          query: {
+            value: filter,
+            type: 'String',
+          },
+          reverse: {
+            value: true,
+            type: 'Boolean',
+          },
+          sortKey: {
+            value: 'CREATED_AT',
+            type: 'DiscountSortKeys',
+          },
+          first: {
+            value: titles.length * 2,
+            type: 'Int',
+          },
+        },
+        fields: [
+          {
+            nodes: [
+              {
+                operation: 'metafield',
+                variables: {
+                  key: { value: 'tid', type: 'String', required: true },
+                  namespace: {
+                    value: ShopifyMeta.namespace,
+                    type: 'String',
+                  },
+                },
+                fields: ['key', 'value'],
+              },
+            ],
+          },
+        ],
+      },
+      undefined,
+      {
+        operationName: 'DiscountNodes',
+      }
+    );
     return fetch(`https://${this.shopDomain}/admin/api/2023-04/graphql.json`, {
       method: 'POST',
       headers: new API.HeaderBuilder()
@@ -155,52 +204,7 @@ export class ShopifyDiscount extends ShopifyMeta {
         .content(API.Consts.APPLICATION_JSON)
         .set(ShopifyAuth.tokenHeader, accessToken)
         .build(),
-      body: JSON.stringify(
-        query(
-          {
-            operation: 'discountNodes',
-            variables: {
-              query: {
-                value: filter,
-                type: 'String',
-              },
-              reverse: {
-                value: true,
-                type: 'Boolean',
-              },
-              sortKey: {
-                value: 'CREATED_AT',
-                type: 'DiscountSortKeys',
-              },
-              first: {
-                value: titles.length * 2,
-                type: 'Int',
-              },
-            },
-            fields: [
-              {
-                nodes: [
-                  {
-                    operation: 'metafield',
-                    variables: {
-                      key: { value: 'tid', type: 'String', required: true },
-                      namespace: {
-                        value: ShopifyMeta.namespace,
-                        type: 'String',
-                      },
-                    },
-                    fields: ['key', 'value'],
-                  },
-                ],
-              },
-            ],
-          },
-          undefined,
-          {
-            operationName: 'DiscountNodes',
-          }
-        )
-      ),
+      body: JSON.stringify(gql),
     })
       .then((res) => res.json())
       .then((json) => json as ShopifyData<ShopifyDiscountIdsRsp>);

@@ -27,8 +27,10 @@ export async function create(request: IRequest, env: Env): Promise<Response> {
   guard(body);
   Throw.ifNull(claims.dest);
 
-  const shopify = new Shopify(claims.dest as string, env);
-  const install = await shopify.getInstall();
+  const shopDomain = (claims.dest as string).replace(/^https?:\/\//, '');
+  const shopify = new Shopify(shopDomain, env);
+  const accessToken = await shopify.getToken();
+  const install = await shopify.getInstall(accessToken);
   const rsp: DiscountRsp = {
     id: await shopify.createDiscount(
       body,
