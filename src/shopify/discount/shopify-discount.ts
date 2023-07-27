@@ -52,19 +52,19 @@ export class ShopifyDiscount extends ShopifyMeta {
         {
           key: 'discount_meta',
           namespace: ShopifyMeta.namespace,
-          type: 'single_line_text_field',
+          type: 'json',
           value: JSON.stringify(discount.metafields),
         },
         {
           key: 'products',
           namespace: ShopifyMeta.namespace,
-          type: 'list.single_line_text_field',
+          type: 'json',
           value: JSON.stringify(discount.metafields.products),
         },
         {
           key: 'collections',
           namespace: ShopifyMeta.namespace,
-          type: 'list.single_line_text_field',
+          type: 'json',
           value: JSON.stringify(discount.metafields.collections),
         },
       ],
@@ -115,7 +115,7 @@ export class ShopifyDiscount extends ShopifyMeta {
         {
           namespace: ShopifyMeta.namespace,
           key: 'discount',
-          type: 'single_line_text_field',
+          type: 'json',
           value: JSON.stringify({
             amount: discount.metafields.discountValue,
             type: discount.metafields.discountType,
