@@ -183,7 +183,7 @@ export class Tiki {
     );
     return JWT.decode(token, key, {
       algorithm: { name: 'ECDSA', hash: 'SHA-256' },
-      iss: 'com.mytiki.l0.auth',
+      iss: 'com.mytiki.l0_auth',
     });
   }
 }
